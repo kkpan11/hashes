@@ -18,7 +18,8 @@ unsuitable for further use in any security critical capacity, as it is
 But, this crate provides the detection [algorithm] pioneered by git, to detect hash collisions when they
 occur and prevent them. The [paper] has more details on how this works.
 
-This implementation will be slower to use than the pure SHA-1 implementation, as more work as to be done.
+This implementation will be slower to use than the pure SHA-1 implementation, as it has to do more computations and
+it can not rely on hardware acceleration available on some CPUs.
 
 ## Examples
 
@@ -31,6 +32,10 @@ use sha1_checked::Sha1;
 let result = Sha1::try_digest(b"hello world");
 assert_eq!(result.hash().as_ref(), hex!("2aae6c35c94fcfb415dbe95f408b9ce91ee846ed"));
 assert!(!result.has_collision());
+
+// Hex-encode hash using https://docs.rs/base16ct
+let hex_hash = base16ct::lower::encode_string(result.hash().as_ref());
+assert_eq!(hex_hash, "2aae6c35c94fcfb415dbe95f408b9ce91ee846ed");
 ```
 
 ### Incremental API

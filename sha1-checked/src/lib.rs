@@ -6,6 +6,8 @@
 )]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![warn(missing_docs, rust_2018_idioms)]
+// TODO: remove after fixing https://github.com/RustCrypto/hashes/issues/594
+#![allow(dead_code)]
 
 //! Collision checked Sha1.
 //!
@@ -27,6 +29,7 @@ use core::slice::from_ref;
 extern crate std;
 
 use digest::{
+    array::Array,
     block_buffer::{BlockBuffer, Eager},
     core_api::BlockSizeUser,
     typenum::{Unsigned, U20, U64},
@@ -114,7 +117,7 @@ impl Sha1 {
             compress::finalize(h, bs * self.block_len, last_block, ctx);
         } else {
             let bit_len = 8 * (buffer.get_pos() as u64 + bs * self.block_len);
-            buffer.len64_padding_be(bit_len, |b| sha1::compress(h, from_ref(b)));
+            buffer.len64_padding_be(bit_len, |b| sha1::compress(h, from_ref(b.into())));
         }
 
         for (chunk, v) in out.chunks_exact_mut(4).zip(h.iter()) {
@@ -187,6 +190,7 @@ impl Update for Sha1 {
                     unsafe { &*(blocks as *const _ as *const [[u8; BLOCK_SIZE]]) };
                 compress::compress(h, ctx, blocks);
             } else {
+                let blocks = Array::cast_slice_to_core(blocks);
                 sha1::compress(h, blocks);
             }
         });
@@ -195,6 +199,10 @@ impl Update for Sha1 {
 
 impl OutputSizeUser for Sha1 {
     type OutputSize = U20;
+}
+
+impl BlockSizeUser for Sha1 {
+    type BlockSize = U64;
 }
 
 impl FixedOutput for Sha1 {
@@ -234,7 +242,6 @@ impl Drop for DetectionState {
 impl ZeroizeOnDrop for DetectionState {}
 
 #[cfg(feature = "oid")]
-#[cfg_attr(docsrs, doc(cfg(feature = "oid")))]
 impl digest::const_oid::AssociatedOid for Sha1 {
     const OID: digest::const_oid::ObjectIdentifier = sha1::Sha1Core::OID;
 }
